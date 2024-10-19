@@ -55,7 +55,7 @@ async def on_message(message: discord.Message) -> None:
     if len(channel_history) >= MESSAGE_LIMIT:
         channel_history.pop(0)
         
-    message.content = message.content.replace(f"<@{BOT.user.id}>", BOT.user.name)
+    message.content = message.content.replace(f"<@{BOT.user.id}>", '')
     
     channel_history.append({
         'role': 'user',
