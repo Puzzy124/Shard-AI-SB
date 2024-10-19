@@ -1,4 +1,5 @@
-python-dotenv
 discord.py-self
+python-dotenv
 aiofiles
 openai
+ujson

@@ -72,7 +72,6 @@ async def on_message(message: discord.Message) -> None:
         async with USER_LOCKS[author]:
             async with message.channel.typing():
                 response = await chat.chat(messages=channel_history)
-                response = response.replace(r"{{user}}", message.author.name)
                 
                 channel_history.append({
                     'role': 'assistant',
