@@ -25,17 +25,11 @@ if TRIGGER is None:
 BOT = commands.Bot(command_prefix="?")
 CHANNEL_HISTORY = {}
 USER_LOCKS = {}
-CHANNEL_CACHE = set()
 MESSAGE_LIMIT = 25
-
-async def update_channel_cache():
-    global CHANNEL_CACHE
-    CHANNEL_CACHE = set(await database.list_channels())
 
 @BOT.event
 async def on_ready():
     print(f"{BOT.user.name} is online!")
-    await update_channel_cache()
 
 @BOT.event
 async def on_message(message: discord.Message) -> None:
@@ -47,10 +41,9 @@ async def on_message(message: discord.Message) -> None:
     if message.content.lower() == '?toggle' and message.author.id == ADMIN_ID:
         success = await database.add_channel(message.channel.id)
         if success:
-            await message.reply("Successfully toggled this channel.")
-            await update_channel_cache()
+            print("Successfully toggled this channel.")
         else:
-            await message.reply("Failed to toggle this channel.")
+            print("Failed to toggle this channel.")
         return
 
     if message.channel.id not in CHANNEL_HISTORY:
@@ -66,24 +59,45 @@ async def on_message(message: discord.Message) -> None:
     
     channel_history.append({
         'role': 'user',
-        'content': message.author.name + ": " + message.content,
+        'content': message.content,
         'timestamp': current_time
     })
 
     if TRIGGER.lower() in message.content.lower() or BOT.user.mentioned_in(message):
-        await asyncio.sleep(random.uniform(1, 5))
-        if message.channel.id in CHANNEL_CACHE:
-            author = message.author.id
+        author = message.author.id
             
-            if author not in USER_LOCKS:
-                USER_LOCKS[author] = asyncio.Lock()
+        if author not in USER_LOCKS:
+            USER_LOCKS[author] = asyncio.Lock()
 
-            async with USER_LOCKS[author]:
-                async with message.channel.typing():
-                    response = await chat.chat(messages=channel_history)
-                    response = response.replace(r"{{user}}", message.author.name)
+        async with USER_LOCKS[author]:
+            async with message.channel.typing():
+                response = await chat.chat(messages=channel_history)
+                response = response.replace(r"{{user}}", message.author.name)
+                
+                channel_history.append({
+                    'role': 'assistant',
+                    'content': response,
+                    'timestamp': time.time()
+                })
+                
+                if len(channel_history) >= MESSAGE_LIMIT:
+                    channel_history.pop(0)
+                
+                if random.random() < 0.25:
                     await message.reply(response)
-                    print(f'Replied to {message.author.name} in {round(time.time() - start_time, 2)}s in {message.channel.mention}')
+                else:
+                    if random.random() < 0.3 and len(response) > 10:
+                        split_index = len(response) // 2
+                        first_half = response[:split_index]
+                        second_half = response[split_index:]
+                        
+                        await message.channel.send(first_half)
+                        await asyncio.sleep(random.randint(0, 4))
+                        await message.channel.send(second_half)
+                    else:
+                        await message.channel.send(response)
+
+                print(f'Replied to {message.author.name} in {round(time.time() - start_time, 2)}s in {message.channel.mention}')
 
     await BOT.process_commands(message)
 
